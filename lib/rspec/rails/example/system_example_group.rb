@@ -104,22 +104,38 @@ module RSpec
           @routes = ::Rails.application.routes
         end
 
-        after do
-          orig_stdout = $stdout
-          $stdout = StringIO.new
-          begin
-            original_before_teardown.bind(self).call
-          ensure
-            myio = $stdout
-            myio.rewind
-            RSpec.current_example.metadata[:extra_failure_lines] = myio.readlines
-            $stdout = orig_stdout
+        if ::Rails::VERSION::STRING >= '6.0'
+          after do
+            orig_stdout = $stdout
+            $stdout = StringIO.new
+            begin
+              original_before_teardown.bind(self).call
+            ensure
+              myio = $stdout
+              myio.rewind
+              RSpec.current_example.metadata[:extra_failure_lines] = myio.readlines
+              $stdout = orig_stdout
+            end
           end
-        end
 
-        around do |example|
-          example.run
-          original_after_teardown.bind(self).call
+          around do |example|
+            example.run
+            original_after_teardown.bind(self).call
+          end
+        else
+          around do |example|
+            orig_stdout = $stdout
+            $stdout = StringIO.new
+            begin
+              example.run
+              original_after_teardown.bind(self).call
+            ensure
+              myio = $stdout
+              myio.rewind
+              RSpec.current_example.metadata[:extra_failure_lines] = myio.readlines
+              $stdout = orig_stdout
+            end
+          end
         end
       end
     end
